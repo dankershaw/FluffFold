@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <rect width="256" height="256" rx="56" fill="#FDF8F5" stroke="#3D2C2E" stroke-width="10"/>
+  <!-- Cute Storefront Scalloped Awning -->
+  <path d="M24 44 H232 V76 C232 90 210 90 210 76 C210 90 184 90 184 76 C184 90 156 90 156 76 C156 90 128 90 128 76 C128 90 100 90 100 76 C100 90 72 90 72 76 C72 90 46 90 46 76 C46 90 24 90 24 76 Z" fill="#A7C4B5" stroke="#3D2C2E" stroke-width="8" stroke-linejoin="round"/>
+  <!-- Folded Pastel Linen Stack -->
+  <!-- Bottom Lavender Towel -->
+  <rect x="44" y="168" width="168" height="44" rx="22" fill="#E9D8FD" stroke="#3D2C2E" stroke-width="8"/>
+  <path d="M68 190 H188" stroke="#3D2C2E" stroke-width="6" stroke-linecap="round"/>
+  <!-- Middle Peach Linen -->
+  <rect x="52" y="132" width="152" height="42" rx="21" fill="#FBCFE8" stroke="#3D2C2E" stroke-width="8"/>
+  <path d="M76 153 H180" stroke="#3D2C2E" stroke-width="6" stroke-linecap="round"/>
+  <!-- Top Sky Pastel Linen -->
+  <rect x="62" y="98" width="132" height="40" rx="20" fill="#E0F2FE" stroke="#3D2C2E" stroke-width="8"/>
+  <path d="M86 118 H170" stroke="#3D2C2E" stroke-width="6" stroke-linecap="round"/>
+  <!-- Cute Gold Star Crest -->
+  <polygon points="128,46 135,61 151,63 139,74 142,90 128,82 114,90 117,74 105,63 121,61" fill="#FBBF24" stroke="#3D2C2E" stroke-width="6" stroke-linejoin="round"/>
+</svg>
