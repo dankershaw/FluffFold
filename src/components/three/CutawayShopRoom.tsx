@@ -40,10 +40,9 @@ export const CutawayShopRoom: React.FC = () => {
   return (
     <group name="cutaway-shop-room">
       {/* High-Contrast Shop Floor Slab */}
-      <mesh position={[0, -0.06, 0]} receiveShadow>
+      <mesh position={[0, -0.05, 0]} receiveShadow>
         <boxGeometry args={[roomSpan, 0.12, roomSpan]} />
         <meshToonMaterial map={floorTexture} gradientMap={gradientMap} />
-        <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
       </mesh>
 
       {/* Theme-Specific Center Circular Woven Pastel Rug */}

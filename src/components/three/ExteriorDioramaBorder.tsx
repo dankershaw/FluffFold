@@ -56,12 +56,12 @@ export const ExteriorDioramaBorder: React.FC = () => {
 
   return (
     <group name="exterior-diorama-border">
-      {/* Lush Cozy Grass Island Base (#7CB342) */}
+      {/* Lush Cozy Grass Island Base (#7CB342) — sits below y = -0.10 so interior floor at y = 0 is never covered */}
       <RoundedBox
         args={[11.2, 0.35, 11.2]}
         radius={0.14}
         smoothness={4}
-        position={[0, -0.22, 0]}
+        position={[0, -0.28, 0]}
         receiveShadow
       >
         <meshToonMaterial color="#7CB342" gradientMap={gradientMap} />
@@ -73,21 +73,10 @@ export const ExteriorDioramaBorder: React.FC = () => {
         args={[10.8, 0.35, 10.8]}
         radius={0.12}
         smoothness={4}
-        position={[0, -0.5, 0]}
+        position={[0, -0.56, 0]}
       >
         <meshToonMaterial color="#8D6E63" gradientMap={gradientMap} />
         <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
-      </RoundedBox>
-
-      {/* Lighter Grass Inner Trim Cushion */}
-      <RoundedBox
-        args={[9.8, 0.06, 9.8]}
-        radius={0.08}
-        smoothness={3}
-        position={[0, -0.05, 0]}
-        receiveShadow
-      >
-        <meshToonMaterial color="#8BC34A" gradientMap={gradientMap} />
       </RoundedBox>
 
       {/* Cobblestone Sidewalk & Delivery Apron */}

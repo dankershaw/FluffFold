@@ -3,12 +3,20 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 
-// Register offline service worker for PWA installation
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// Clean up any stale cache-first service workers and register network-first SW
+if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch(() => {
-      // Service worker registration optional in preview environments
+    caches.keys().then((keys) => {
+      keys.forEach((k) => {
+        if (k !== 'fluff-fold-v3') caches.delete(k);
+      });
     });
+    if (import.meta.env.PROD) {
+      navigator.serviceWorker
+        .register('/sw.js', { updateViaCache: 'none' })
+        .then((reg) => reg.update())
+        .catch(() => {});
+    }
   });
 }
 
