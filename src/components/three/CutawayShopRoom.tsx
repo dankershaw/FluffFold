@@ -27,13 +27,6 @@ export const CutawayShopRoom: React.FC = () => {
   const roomSpan = GRID_SIZE * TILE_SIZE_METERS; // 12 * 0.5m = 6.0m
   const halfSpan = roomSpan / 2; // 3.0m
 
-  /**
-   * Camera azimuth angles by cameraRotationIndex:
-   * 0: 45°  (Camera in +X, +Z quadrant -> North (-Z) and West (-X) are BACK walls; South (+Z) and East (+X) are FRONT cutaway)
-   * 1: 135° (Camera in -X, +Z quadrant -> North (-Z) and East (+X) are BACK walls; South (+Z) and West (-X) are FRONT cutaway)
-   * 2: 225° (Camera in -X, -Z quadrant -> South (+Z) and East (+X) are BACK walls; North (-Z) and West (-X) are FRONT cutaway)
-   * 3: 315° (Camera in +X, -Z quadrant -> South (+Z) and West (-X) are BACK walls; North (-Z) and East (+X) are FRONT cutaway)
-   */
   const isNorthFull = cameraRotationIndex === 0 || cameraRotationIndex === 1;
   const isWestFull = cameraRotationIndex === 0 || cameraRotationIndex === 3;
   const isSouthFull = cameraRotationIndex === 2 || cameraRotationIndex === 3;
@@ -47,16 +40,11 @@ export const CutawayShopRoom: React.FC = () => {
   return (
     <group name="cutaway-shop-room">
       {/* High-Contrast Shop Floor Slab */}
-      <RoundedBox
-        args={[roomSpan, 0.14, roomSpan]}
-        radius={0.04}
-        smoothness={2}
-        position={[0, -0.07, 0]}
-        receiveShadow
-      >
+      <mesh position={[0, -0.06, 0]} receiveShadow>
+        <boxGeometry args={[roomSpan, 0.12, roomSpan]} />
         <meshToonMaterial map={floorTexture} gradientMap={gradientMap} />
-        <Outlines thickness={0.025} color={DARK_COCOA} />
-      </RoundedBox>
+        <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
+      </mesh>
 
       {/* Theme-Specific Center Circular Woven Pastel Rug */}
       <group position={[0, 0.008, 0.25]}>
@@ -81,7 +69,7 @@ export const CutawayShopRoom: React.FC = () => {
           receiveShadow
         >
           <meshToonMaterial color={theme.wallHex} gradientMap={gradientMap} />
-          <Outlines thickness={0.03} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
         </RoundedBox>
 
         {/* Wainscoting / Baseboard Trim (#5C4033 or theme trim) */}
@@ -92,7 +80,7 @@ export const CutawayShopRoom: React.FC = () => {
           position={[0, 0.14, 0.02]}
         >
           <meshToonMaterial color={theme.trimHex} gradientMap={gradientMap} />
-          <Outlines thickness={0.02} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.02} color={DARK_COCOA} />
         </RoundedBox>
 
         {/* Full-Height Storefront Framed Window & Scalloped Pastel Awning Details */}
@@ -100,9 +88,9 @@ export const CutawayShopRoom: React.FC = () => {
           <group>
             {/* Left Framed Window */}
             <group position={[-1.45, 1.45, 0.12]}>
-              <RoundedBox args={[1.55, 1.15, 0.08]} radius={0.04} smoothness={2}>
+              <RoundedBox args={[1.55, 1.15, 0.08]} radius={0.03} smoothness={2}>
                 <meshToonMaterial color={theme.trimHex} gradientMap={gradientMap} />
-                <Outlines thickness={0.025} color={DARK_COCOA} />
+                <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
               </RoundedBox>
               <RoundedBox args={[1.35, 0.95, 0.1]} radius={0.03} smoothness={2}>
                 <meshToonMaterial color="#E0F2FE" gradientMap={gradientMap} />
@@ -110,22 +98,22 @@ export const CutawayShopRoom: React.FC = () => {
               {/* Scalloped Interior Valance Awning */}
               <RoundedBox args={[1.62, 0.22, 0.18]} radius={0.06} smoothness={3} position={[0, 0.56, 0.06]}>
                 <meshToonMaterial color={theme.accentHex} gradientMap={gradientMap} />
-                <Outlines thickness={0.025} color={DARK_COCOA} />
+                <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
               </RoundedBox>
             </group>
 
             {/* Right Framed Feature Poster / Window */}
             <group position={[1.45, 1.45, 0.12]}>
-              <RoundedBox args={[1.55, 1.15, 0.08]} radius={0.04} smoothness={2}>
+              <RoundedBox args={[1.55, 1.15, 0.08]} radius={0.03} smoothness={2}>
                 <meshToonMaterial color={theme.trimHex} gradientMap={gradientMap} />
-                <Outlines thickness={0.025} color={DARK_COCOA} />
+                <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
               </RoundedBox>
               <RoundedBox args={[1.35, 0.95, 0.1]} radius={0.03} smoothness={2}>
                 <meshToonMaterial color={theme.rugHex} gradientMap={gradientMap} />
               </RoundedBox>
               <RoundedBox args={[1.62, 0.22, 0.18]} radius={0.06} smoothness={3} position={[0, 0.56, 0.06]}>
                 <meshToonMaterial color={theme.accentHex} gradientMap={gradientMap} />
-                <Outlines thickness={0.025} color={DARK_COCOA} />
+                <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
               </RoundedBox>
             </group>
           </group>
@@ -143,7 +131,7 @@ export const CutawayShopRoom: React.FC = () => {
           receiveShadow
         >
           <meshToonMaterial color={theme.wallHex} gradientMap={gradientMap} />
-          <Outlines thickness={0.03} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
         </RoundedBox>
 
         {/* Baseboard Wainscoting */}
@@ -154,21 +142,21 @@ export const CutawayShopRoom: React.FC = () => {
           position={[0.02, 0.14, 0]}
         >
           <meshToonMaterial color={theme.trimHex} gradientMap={gradientMap} />
-          <Outlines thickness={0.02} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.02} color={DARK_COCOA} />
         </RoundedBox>
 
         {isWestFull && (
           <group position={[0.12, 1.45, 0]}>
-            <RoundedBox args={[0.08, 1.15, 2.2]} radius={0.04} smoothness={2}>
+            <RoundedBox args={[0.08, 1.15, 2.2]} radius={0.03} smoothness={2}>
               <meshToonMaterial color={theme.trimHex} gradientMap={gradientMap} />
-              <Outlines thickness={0.025} color={DARK_COCOA} />
+              <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
             </RoundedBox>
             <RoundedBox args={[0.1, 0.95, 1.98]} radius={0.03} smoothness={2}>
               <meshToonMaterial color="#E0F2FE" gradientMap={gradientMap} />
             </RoundedBox>
             <RoundedBox args={[0.18, 0.22, 2.28]} radius={0.06} smoothness={3} position={[0.06, 0.56, 0]}>
               <meshToonMaterial color={theme.accentHex} gradientMap={gradientMap} />
-              <Outlines thickness={0.025} color={DARK_COCOA} />
+              <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
             </RoundedBox>
           </group>
         )}
@@ -186,7 +174,7 @@ export const CutawayShopRoom: React.FC = () => {
           receiveShadow
         >
           <meshToonMaterial color={theme.wallHex} gradientMap={gradientMap} />
-          <Outlines thickness={0.03} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
         </RoundedBox>
         {/* Right segment of South Wall */}
         <RoundedBox
@@ -198,7 +186,7 @@ export const CutawayShopRoom: React.FC = () => {
           receiveShadow
         >
           <meshToonMaterial color={theme.wallHex} gradientMap={gradientMap} />
-          <Outlines thickness={0.03} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
         </RoundedBox>
       </group>
 
@@ -213,21 +201,21 @@ export const CutawayShopRoom: React.FC = () => {
           receiveShadow
         >
           <meshToonMaterial color={theme.wallHex} gradientMap={gradientMap} />
-          <Outlines thickness={0.03} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
         </RoundedBox>
       </group>
 
       {/* Warm Hanging Pendant Lamps (anchored to back walls) */}
       <group position={[-1.2, 2.38, -1.2]}>
-        <RoundedBox args={[0.42, 0.22, 0.42]} radius={0.1} smoothness={3}>
+        <RoundedBox args={[0.42, 0.22, 0.42]} radius={0.08} smoothness={3}>
           <meshToonMaterial color="#FBBF24" gradientMap={gradientMap} />
-          <Outlines thickness={0.025} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
         </RoundedBox>
       </group>
       <group position={[1.2, 2.38, -1.2]}>
-        <RoundedBox args={[0.42, 0.22, 0.42]} radius={0.1} smoothness={3}>
+        <RoundedBox args={[0.42, 0.22, 0.42]} radius={0.08} smoothness={3}>
           <meshToonMaterial color="#FBBF24" gradientMap={gradientMap} />
-          <Outlines thickness={0.025} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
         </RoundedBox>
       </group>
     </group>

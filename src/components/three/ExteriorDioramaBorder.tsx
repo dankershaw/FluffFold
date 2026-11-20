@@ -65,7 +65,7 @@ export const ExteriorDioramaBorder: React.FC = () => {
         receiveShadow
       >
         <meshToonMaterial color="#7CB342" gradientMap={gradientMap} />
-        <Outlines thickness={0.03} color={DARK_COCOA} />
+        <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
       </RoundedBox>
 
       {/* Warm Earth Under-Slab Base */}
@@ -76,7 +76,7 @@ export const ExteriorDioramaBorder: React.FC = () => {
         position={[0, -0.5, 0]}
       >
         <meshToonMaterial color="#8D6E63" gradientMap={gradientMap} />
-        <Outlines thickness={0.03} color={DARK_COCOA} />
+        <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
       </RoundedBox>
 
       {/* Lighter Grass Inner Trim Cushion */}
@@ -95,14 +95,14 @@ export const ExteriorDioramaBorder: React.FC = () => {
         <RoundedBox
           key={st.key}
           args={st.size}
-          radius={0.04}
+          radius={0.025}
           smoothness={2}
           position={st.pos}
           receiveShadow
           castShadow
         >
           <meshToonMaterial color={st.color} gradientMap={gradientMap} />
-          <Outlines thickness={0.02} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.015} color={DARK_COCOA} />
         </RoundedBox>
       ))}
 
@@ -110,7 +110,7 @@ export const ExteriorDioramaBorder: React.FC = () => {
       <group position={[0, 0.03, 2.85]}>
         <RoundedBox args={[1.15, 0.05, 0.55]} radius={0.02} smoothness={2} receiveShadow>
           <meshToonMaterial color="#D97706" gradientMap={gradientMap} />
-          <Outlines thickness={0.025} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.02} color={DARK_COCOA} />
         </RoundedBox>
         <RoundedBox args={[0.95, 0.06, 0.38]} radius={0.02} smoothness={2} position={[0, 0.01, 0]}>
           <meshToonMaterial color="#FEF3C7" gradientMap={gradientMap} />
@@ -122,7 +122,7 @@ export const ExteriorDioramaBorder: React.FC = () => {
         {/* Sign Post / Frame */}
         <RoundedBox args={[0.55, 0.68, 0.14]} radius={0.04} smoothness={3} position={[0, 0.34, 0]} castShadow>
           <meshToonMaterial color="#8D5B4C" gradientMap={gradientMap} />
-          <Outlines thickness={0.03} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
         </RoundedBox>
         {/* Cream Painted Sign Face */}
         <RoundedBox args={[0.42, 0.46, 0.16]} radius={0.03} smoothness={2} position={[0, 0.38, 0]}>
@@ -139,12 +139,12 @@ export const ExteriorDioramaBorder: React.FC = () => {
         {/* Wooden Pallet Base */}
         <RoundedBox args={[0.85, 0.08, 0.85]} radius={0.02} smoothness={2} castShadow receiveShadow>
           <meshToonMaterial color="#B47B48" gradientMap={gradientMap} />
-          <Outlines thickness={0.025} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.02} color={DARK_COCOA} />
         </RoundedBox>
         {/* Cozy Cardboard Delivery Box with Pastel Shipping Tape */}
         <RoundedBox args={[0.52, 0.44, 0.52]} radius={0.06} smoothness={3} position={[0, 0.26, 0]} castShadow>
           <meshToonMaterial color="#D9A066" gradientMap={gradientMap} />
-          <Outlines thickness={0.03} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
         </RoundedBox>
         <RoundedBox args={[0.54, 0.08, 0.16]} radius={0.02} smoothness={2} position={[0, 0.45, 0]}>
           <meshToonMaterial color="#FAF0E6" gradientMap={gradientMap} />
@@ -156,22 +156,22 @@ export const ExteriorDioramaBorder: React.FC = () => {
         <group key={`bush-${i}`} position={b.pos} scale={b.scale}>
           <RoundedBox args={[0.72, 0.52, 0.72]} radius={0.22} smoothness={4} castShadow>
             <meshToonMaterial color="#558B2F" gradientMap={gradientMap} />
-            <Outlines thickness={0.03} color={DARK_COCOA} />
+            <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
           </RoundedBox>
           <RoundedBox args={[0.52, 0.44, 0.52]} radius={0.18} smoothness={4} position={[0.22, 0.08, 0.18]} castShadow>
             <meshToonMaterial color="#689F38" gradientMap={gradientMap} />
-            <Outlines thickness={0.03} color={DARK_COCOA} />
+            <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
           </RoundedBox>
           {/* Cute Flower Blossoms */}
           <mesh position={[0.05, 0.28, 0.22]} castShadow>
             <sphereGeometry args={[0.09, 12, 12]} />
             <meshToonMaterial color={b.flower} gradientMap={gradientMap} />
-            <Outlines thickness={0.02} color={DARK_COCOA} />
+            <Outlines screenspace thickness={0.015} color={DARK_COCOA} />
           </mesh>
           <mesh position={[0.25, 0.24, -0.05]} castShadow>
             <sphereGeometry args={[0.08, 12, 12]} />
             <meshToonMaterial color="#FFFDF9" gradientMap={gradientMap} />
-            <Outlines thickness={0.02} color={DARK_COCOA} />
+            <Outlines screenspace thickness={0.015} color={DARK_COCOA} />
           </mesh>
         </group>
       ))}

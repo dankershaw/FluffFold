@@ -40,35 +40,35 @@ export const ShopkeeperAvatar: React.FC = () => {
   return (
     <group ref={groupRef} position={[initX, 0, initZ]} name="shopkeeper-avatar">
       {/* Chunky Boots */}
-      <RoundedBox args={[0.13, 0.16, 0.17]} radius={0.05} position={[-0.09, 0.08, 0]} castShadow>
+      <RoundedBox args={[0.13, 0.16, 0.17]} radius={0.04} position={[-0.09, 0.08, 0]} castShadow>
         <meshToonMaterial color="#5C4033" gradientMap={gradientMap} />
-        <Outlines thickness={0.025} color={DARK_COCOA} />
+        <Outlines screenspace thickness={0.022} color={DARK_COCOA} />
       </RoundedBox>
-      <RoundedBox args={[0.13, 0.16, 0.17]} radius={0.05} position={[0.09, 0.08, 0]} castShadow>
+      <RoundedBox args={[0.13, 0.16, 0.17]} radius={0.04} position={[0.09, 0.08, 0]} castShadow>
         <meshToonMaterial color="#5C4033" gradientMap={gradientMap} />
-        <Outlines thickness={0.025} color={DARK_COCOA} />
+        <Outlines screenspace thickness={0.022} color={DARK_COCOA} />
       </RoundedBox>
 
       {/* Cozy Cream Sweater Torso */}
-      <RoundedBox args={[0.38, 0.44, 0.28]} radius={0.11} smoothness={4} position={[0, 0.36, 0]} castShadow>
+      <RoundedBox args={[0.38, 0.44, 0.28]} radius={0.09} smoothness={4} position={[0, 0.36, 0]} castShadow>
         <meshToonMaterial color="#FAF0E6" gradientMap={gradientMap} />
-        <Outlines thickness={0.03} color={DARK_COCOA} />
+        <Outlines screenspace thickness={0.028} color={DARK_COCOA} />
       </RoundedBox>
 
       {/* Color-Coded Sage Green Shopkeeper Fabric Apron */}
-      <RoundedBox args={[0.34, 0.38, 0.26]} radius={0.08} smoothness={3} position={[0, 0.33, 0.04]} castShadow>
+      <RoundedBox args={[0.34, 0.38, 0.26]} radius={0.07} smoothness={3} position={[0, 0.33, 0.04]} castShadow>
         <meshToonMaterial color="#A7C4B5" gradientMap={gradientMap} />
-        <Outlines thickness={0.025} color={DARK_COCOA} />
+        <Outlines screenspace thickness={0.022} color={DARK_COCOA} />
       </RoundedBox>
 
       {/* Chibi Arms */}
-      <RoundedBox args={[0.12, 0.28, 0.12]} radius={0.05} position={[-0.24, 0.37, 0]} rotation={[0, 0, 0.18]} castShadow>
+      <RoundedBox args={[0.12, 0.28, 0.12]} radius={0.04} position={[-0.24, 0.37, 0]} rotation={[0, 0, 0.18]} castShadow>
         <meshToonMaterial color="#FAF0E6" gradientMap={gradientMap} />
-        <Outlines thickness={0.025} color={DARK_COCOA} />
+        <Outlines screenspace thickness={0.022} color={DARK_COCOA} />
       </RoundedBox>
-      <RoundedBox args={[0.12, 0.28, 0.12]} radius={0.05} position={[0.24, 0.37, 0]} rotation={[0, 0, -0.18]} castShadow>
+      <RoundedBox args={[0.12, 0.28, 0.12]} radius={0.04} position={[0.24, 0.37, 0]} rotation={[0, 0, -0.18]} castShadow>
         <meshToonMaterial color="#FAF0E6" gradientMap={gradientMap} />
-        <Outlines thickness={0.025} color={DARK_COCOA} />
+        <Outlines screenspace thickness={0.022} color={DARK_COCOA} />
       </RoundedBox>
 
       {/* Oversized Round Chibi Head (reaches ~1.25m total height with beanie) */}
@@ -76,7 +76,7 @@ export const ShopkeeperAvatar: React.FC = () => {
         <mesh castShadow>
           <sphereGeometry args={[0.27, 20, 20]} />
           <meshToonMaterial color="#FDE68A" gradientMap={gradientMap} />
-          <Outlines thickness={0.03} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.028} color={DARK_COCOA} />
         </mesh>
 
         {/* Cute Dot Eyes */}
@@ -103,18 +103,18 @@ export const ShopkeeperAvatar: React.FC = () => {
         <mesh position={[0, 0.12, -0.02]} castShadow>
           <sphereGeometry args={[0.26, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.58]} />
           <meshToonMaterial color="#E9D8FD" gradientMap={gradientMap} />
-          <Outlines thickness={0.03} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
         </mesh>
         <mesh position={[0, 0.39, -0.02]} castShadow>
           <sphereGeometry args={[0.075, 12, 12]} />
           <meshToonMaterial color="#FFFDF9" gradientMap={gradientMap} />
-          <Outlines thickness={0.022} color={DARK_COCOA} />
+          <Outlines screenspace thickness={0.02} color={DARK_COCOA} />
         </mesh>
       </group>
 
       {/* Diegetic Rounded Cream Speech Pill anchored 0.5m above the character's head */}
       {!isBuildMode && (
-        <Html position={[0, 1.65, 0]} center distanceFactor={8} zIndexRange={[10, 0]}>
+        <Html position={[0, 1.5, 0]} center zIndexRange={[10, 0]}>
           <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#FFFDF9] px-2.5 py-0.5 text-[11px] font-extrabold text-[#3D2C2E] border-2 border-[#3D2C2E] shadow-sm">
             Shopkeeper • Ready
           </div>

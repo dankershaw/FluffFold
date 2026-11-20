@@ -62,8 +62,8 @@ const IsometricCameraRig: React.FC<{ panOffset: React.MutableRefObject<THREE.Vec
       makeDefault
       position={[10.4, 10.9, 10.4]}
       zoom={68}
-      near={-30}
-      far={80}
+      near={0.1}
+      far={60}
     />
   );
 };

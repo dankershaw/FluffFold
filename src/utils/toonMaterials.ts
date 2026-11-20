@@ -6,14 +6,17 @@ let cachedToonGradient: THREE.DataTexture | null = null;
 /**
  * Generates a custom 3-step cartoon cel-shading gradient map (soft shadow, warm mid-tone, crisp highlight)
  * for Three.js MeshToonMaterial so every object has rich, painterly cartoon shading.
+ * NOTE: Three.js MeshToonMaterial samples the `.r` channel of `gradientMap`, so we use RedFormat (or RGBA luminance)
+ * with NearestFilter and linear color space.
  */
 export function getToonGradientMap(): THREE.DataTexture {
   if (cachedToonGradient) return cachedToonGradient;
 
+  // 3 distinct cel-shading luminance steps: shadow (155), mid-tone (215), bright highlight (255)
   const colors = new Uint8Array([
-    150, 140, 145, 255, // Soft warm shadow band
-    218, 212, 210, 255, // Crisp mid-tone band
-    255, 252, 245, 255, // Warm golden highlight band
+    155, 155, 155, 255,
+    215, 215, 215, 255,
+    255, 255, 255, 255,
   ]);
 
   const texture = new THREE.DataTexture(colors, 3, 1, THREE.RGBAFormat);
@@ -98,11 +101,12 @@ export function getThemeFloorTexture(themeId: RoomThemeId): THREE.CanvasTexture 
   }
 
   // Subtle tile border frame so 1-tile grid alignment is intuitive
-  ctx.strokeStyle = 'rgba(61, 44, 46, 0.16)';
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(61, 44, 46, 0.22)';
+  ctx.lineWidth = 5;
   ctx.strokeRect(0, 0, 512, 512);
 
   const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(6, 6);
@@ -175,6 +179,7 @@ export function getProductLabelTexture(style: 'Medical' | 'Little' | 'Middle' | 
   ctx.strokeRect(8, 8, 240, 240);
 
   const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
   tex.needsUpdate = true;
   packageLabelCache[style] = tex;
   return tex;
