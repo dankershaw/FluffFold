@@ -13,6 +13,8 @@ const TABS: { id: TabletTabType; label: string; badge?: string }[] = [
   { id: 'studio', label: '3D Studio', badge: '3.2★' },
 ];
 
+const DEMOGRAPHICS: Demographic[] = ['Medical', 'Caregiver', 'Little', 'Middle'];
+
 export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
   isDockedSide = false,
 }) => {
@@ -23,6 +25,7 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
   const gameMode = useGameStore((s) => s.gameMode);
   const sandboxSettings = useGameStore((s) => s.sandboxSettings);
   const primaryDemographic = useGameStore((s) => s.primaryDemographic);
+  const selectStarterLicense = useGameStore((s) => s.selectStarterLicense);
   const starRating = useGameStore((s) => s.starRating);
   const reputationXP = useGameStore((s) => s.reputationXP);
 
@@ -38,27 +41,48 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
   const removeFixture = useGameStore((s) => s.removeFixture);
 
   const products = useGameStore((s) => s.products);
+  const orderWholesaleCase = useGameStore((s) => s.orderWholesaleCase);
+  const deliveryBayBoxes = useGameStore((s) => s.deliveryBayBoxes);
+  const interactWithDeliveryBox = useGameStore((s) => s.interactWithDeliveryBox);
+  const carriedBox = useGameStore((s) => s.carriedBox);
+  const dropCarriedBoxToBay = useGameStore((s) => s.dropCarriedBoxToBay);
+
   const adjustProductPrice = useGameStore((s) => s.adjustProductPrice);
   const toggleProductClearance = useGameStore((s) => s.toggleProductClearance);
-  const showToast = useGameStore((s) => s.showToast);
+  const tutorial = useGameStore((s) => s.tutorial);
+  const replayTutorial = useGameStore((s) => s.replayTutorial);
 
-  // Live 4-Demographic Appeal Radar Calculation
+  // Live 4-Demographic Appeal Radar Calculation (responds dynamically to Theme, Specialty, Stock & Prices!)
   const demographicAppealScores: Record<Demographic, number> = React.useMemo(() => {
     const base: Record<Demographic, number> = {
-      Medical: 62,
-      Caregiver: 68,
-      Little: 72,
-      Middle: 64,
+      Medical: 58,
+      Caregiver: 62,
+      Little: 64,
+      Middle: 60,
     };
     base[primaryDemographic] = Math.min(98, base[primaryDemographic] + 18);
     const theme = ROOM_THEMES[activeThemeId];
     if (theme.affinityDemographic) {
       base[theme.affinityDemographic] = Math.min(99, base[theme.affinityDemographic] + 20);
     }
-    return base;
-  }, [primaryDemographic, activeThemeId]);
 
-  // Single-column card layout inside 380px side drawer, or responsive 1-to-2 column grid in full modal
+    // Factor in stocked shelves and fair pricing
+    for (const fix of placedFixtures) {
+      if (fix.stockedItemCount > 0 && fix.assignedSkuId) {
+        const sku = products.find((p) => p.skuId === fix.assignedSkuId);
+        if (sku) {
+          const priceRatio = sku.currentRetailPrice / sku.suggestedRetailPrice;
+          const priceModifier = priceRatio <= 0.85 ? 8 : priceRatio <= 1.05 ? 4 : -6;
+          base[sku.catalogId] = Math.max(
+            15,
+            Math.min(99, base[sku.catalogId] + 4 + priceModifier)
+          );
+        }
+      }
+    }
+    return base;
+  }, [primaryDemographic, activeThemeId, placedFixtures, products]);
+
   const cardGridClass = isDockedSide
     ? 'grid grid-cols-1 gap-3'
     : 'grid grid-cols-1 sm:grid-cols-2 gap-3';
@@ -83,16 +107,15 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {gameMode === 'Sandbox' && (
-            <button
-              id="btn-open-sandbox-rules"
-              type="button"
-              onClick={() => setActiveModal('newGame')}
-              className="min-h-[48px] min-w-[48px] rounded-xl border-2 border-[#3D2C2E] bg-[#E9D8FD] px-2.5 py-1.5 text-xs font-black text-[#3D2C2E] shadow-[0_2px_0_#3D2C2E]"
-            >
-              Sandbox
-            </button>
-          )}
+          <button
+            id="btn-replay-guides"
+            type="button"
+            onClick={replayTutorial}
+            title="Replay Day 1 Interactive Walkthrough"
+            className="min-h-[48px] min-w-[48px] rounded-xl border-2 border-[#3D2C2E] bg-[#FEF3C7] px-2.5 py-1.5 text-xs font-black text-[#3D2C2E] shadow-[0_2px_0_#3D2C2E]"
+          >
+            Replay Guides
+          </button>
           {!isDockedSide && (
             <button
               id="btn-close-tablet-modal"
@@ -110,6 +133,12 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
       <div className="grid grid-cols-3 gap-2 border-b-2 border-[#3D2C2E]/20 bg-[#FFFDF9] p-2.5">
         {TABS.map((t) => {
           const active = activeTab === t.id;
+          const isTutorialHighlight =
+            tutorial.isActive &&
+            ((tutorial.currentStep === 1 && t.id === 'dashboard') ||
+              (tutorial.currentStep === 2 && t.id === 'wholesale') ||
+              (tutorial.currentStep === 5 && t.id === 'inventory'));
+
           return (
             <button
               key={t.id}
@@ -119,6 +148,8 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
               className={`flex min-h-[48px] min-w-[48px] flex-col items-center justify-center rounded-xl border-2 px-2 py-1.5 text-xs font-black transition ${
                 active
                   ? 'border-[#3D2C2E] bg-[#A7C4B5] text-[#3D2C2E] shadow-[0_2px_0_#3D2C2E]'
+                  : isTutorialHighlight
+                  ? 'border-[#3D2C2E] bg-[#FEF3C7] text-[#3D2C2E] ring-2 ring-[#FBBF24] animate-pulse'
                   : 'border-[#3D2C2E]/30 bg-[#FAF0E6] text-[#5C4033] hover:bg-[#FFFDF9]'
               }`}
             >
@@ -138,6 +169,36 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
         {/* ================= 1. DASHBOARD TAB ================= */}
         {activeTab === 'dashboard' && (
           <div className="space-y-3">
+            {/* Step 1 Tutorial Card: Starter Wholesale Specialty Switcher */}
+            <div className="rounded-2xl border-2 border-[#3D2C2E] bg-[#FFFDF9] p-3.5 shadow-[0_3px_0_#3D2C2E]">
+              <h3 className="text-xs font-black uppercase tracking-wide text-[#3D2C2E]">
+                Starter Wholesale Specialty License
+              </h3>
+              <p className="mt-0.5 text-[11px] font-bold text-[#5C4033]">
+                Tap a specialty to focus your store radar and unlock starter wholesale cases:
+              </p>
+              <div className="mt-2.5 grid grid-cols-2 gap-2">
+                {DEMOGRAPHICS.map((demo) => {
+                  const isCurrent = primaryDemographic === demo;
+                  return (
+                    <button
+                      key={demo}
+                      id={`btn-specialty-license-${demo}`}
+                      type="button"
+                      onClick={() => selectStarterLicense(demo)}
+                      className={`min-h-[48px] rounded-xl border-2 border-[#3D2C2E] px-3 py-2 text-xs font-black transition ${
+                        isCurrent
+                          ? 'bg-[#A7C4B5] shadow-[0_2px_0_#3D2C2E]'
+                          : 'bg-[#FAF0E6] hover:bg-[#FFFDF9]'
+                      }`}
+                    >
+                      {isCurrent ? `✓ ${demo}` : demo}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Star XP Progression Card */}
             <div className="rounded-2xl border-2 border-[#3D2C2E] bg-[#FFFDF9] p-3.5 shadow-[0_3px_0_#3D2C2E]">
               <div className="flex items-center justify-between">
@@ -165,7 +226,7 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
                 Live 4-Demographic Appeal Radar
               </h3>
               <div className="mt-2.5 space-y-2">
-                {(Object.keys(demographicAppealScores) as Demographic[]).map((demo) => {
+                {DEMOGRAPHICS.map((demo) => {
                   const score = demographicAppealScores[demo];
                   return (
                     <div key={demo} className="space-y-1">
@@ -177,7 +238,7 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
                       </div>
                       <div className="h-2.5 w-full overflow-hidden rounded-full border border-[#3D2C2E] bg-[#FAF0E6]">
                         <div
-                          className="h-full bg-[#FBBF24]"
+                          className="h-full bg-[#FBBF24] transition-all"
                           style={{ width: `${score}%` }}
                         />
                       </div>
@@ -186,26 +247,192 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
                 })}
               </div>
             </div>
+          </div>
+        )}
 
-            {/* Store Layout & Daily Rent Summary Card */}
+        {/* ================= 2. WHOLESALE MARKET TAB ================= */}
+        {activeTab === 'wholesale' && (
+          <div className="space-y-3">
+            {/* Delivery Bay Status Card */}
             <div className="rounded-2xl border-2 border-[#3D2C2E] bg-[#FAF0E6] p-3.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#3D2C2E]">
-                  Tier 1 Storefront (12x12 Tiles / 6x6m)
-                </span>
-                <CrinkleCoinBadge amount={120} size="sm" />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h3 className="text-xs font-black uppercase text-[#3D2C2E]">
+                    📦 Exterior Delivery Bay Pallet ({deliveryBayBoxes.length} / 4 Cases)
+                  </h3>
+                  <p className="text-[11px] font-bold text-[#5C4033]">
+                    {carriedBox
+                      ? `Shopkeeper is carrying a case (${carriedBox.unitsRemaining} units). Tap a green shelf in 3D!`
+                      : deliveryBayBoxes.length > 0
+                      ? 'Tap a box on the East sidewalk pallet (or click Pick Up below) to stock shelves.'
+                      : 'Delivery pallet empty — order a 6-pack case below!'}
+                  </p>
+                </div>
+
+                {carriedBox ? (
+                  <button
+                    id="btn-return-carried-box"
+                    type="button"
+                    onClick={dropCarriedBoxToBay}
+                    className="min-h-[48px] min-w-[48px] rounded-xl border-2 border-[#3D2C2E] bg-[#FBCFE8] px-3 py-1.5 text-xs font-black text-[#3D2C2E]"
+                  >
+                    Put Box Back
+                  </button>
+                ) : (
+                  deliveryBayBoxes.length > 0 && (
+                    <button
+                      id="btn-pickup-first-bay-box"
+                      type="button"
+                      onClick={() => {
+                        interactWithDeliveryBox(deliveryBayBoxes[0].id);
+                        if (!isDockedSide) setActiveModal('none');
+                      }}
+                      className="min-h-[48px] min-w-[48px] rounded-xl border-2 border-[#3D2C2E] bg-[#FBBF24] px-3.5 py-1.5 text-xs font-black text-[#3D2C2E] shadow-[0_2px_0_#3D2C2E]"
+                    >
+                      Pick Up Box ({deliveryBayBoxes[0].unitsRemaining})
+                    </button>
+                  )
+                )}
               </div>
-              <p className="mt-1 text-xs font-bold text-[#5C4033]">
-                Active Fixtures: {placedFixtures.length} • All A* aisles verified clear between Entrance, Shelves &amp; Checkout.
-              </p>
+            </div>
+
+            {/* Wholesale Product Case Cards */}
+            <div className={cardGridClass}>
+              {products.map((sku) => {
+                const caseCost = sku.wholesaleCost * 6;
+                return (
+                  <div
+                    key={`ws-${sku.skuId}`}
+                    className="flex flex-col justify-between rounded-2xl border-2 border-[#3D2C2E] bg-[#FFFDF9] p-3.5 shadow-[0_3px_0_#3D2C2E]"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="rounded-full border border-[#3D2C2E] bg-[#E0F2FE] px-2.5 py-0.5 text-[10px] font-black">
+                          {sku.catalogId} • Size {sku.size}
+                        </span>
+                        <CrinkleCoinBadge amount={caseCost} size="sm" />
+                      </div>
+                      <h4 className="mt-1.5 text-xs sm:text-sm font-black text-[#3D2C2E]">
+                        {sku.displayName} (6-Pack Case)
+                      </h4>
+                      <p className="mt-1 text-[11px] font-bold text-[#5C4033]">
+                        Unit Cost: {sku.wholesaleCost} CC • RRP: {sku.suggestedRetailPrice} CC • Absorbency {sku.absorbencyLevel}/10
+                      </p>
+                    </div>
+                    <button
+                      id={`btn-order-case-${sku.skuId}`}
+                      type="button"
+                      onClick={() => orderWholesaleCase(sku.skuId)}
+                      className="mt-3 min-h-[48px] w-full rounded-xl border-2 border-[#3D2C2E] bg-[#A7C4B5] px-3 py-2 text-xs font-black text-[#3D2C2E] shadow-[0_2px_0_#3D2C2E] active:translate-y-0.5"
+                    >
+                      Order 6-Pack Case ({caseCost} CC)
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
 
-        {/* ================= 2. BUILD & DECOR TAB ================= */}
+        {/* ================= 3. INVENTORY & PRICING TAB (Chunky -/+ Steppers) ================= */}
+        {activeTab === 'inventory' && (
+          <div className="space-y-3">
+            {/* Compact Appeal Radar Header inside Pricing Tab for Step 5 */}
+            <div className="rounded-2xl border-2 border-[#3D2C2E] bg-[#FAF0E6] p-3">
+              <div className="text-xs font-black uppercase text-[#3D2C2E]">
+                Live 4-Demographic Price &amp; Appeal Radar
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {DEMOGRAPHICS.map((demo) => (
+                  <div
+                    key={`radar-mini-${demo}`}
+                    className="flex items-center justify-between rounded-xl border border-[#3D2C2E]/40 bg-[#FFFDF9] px-2.5 py-1.5 text-xs font-black"
+                  >
+                    <span>{demo}</span>
+                    <span className="text-[#D97706]">{demographicAppealScores[demo]}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className={cardGridClass}>
+              {products.map((sku) => {
+                const ratio = sku.currentRetailPrice / sku.suggestedRetailPrice;
+                const stockedUnits = placedFixtures
+                  .filter((f) => f.assignedSkuId === sku.skuId)
+                  .reduce((sum, f) => sum + f.stockedItemCount, 0);
+
+                return (
+                  <div
+                    key={sku.skuId}
+                    className="flex flex-col justify-between rounded-2xl border-2 border-[#3D2C2E] bg-[#FFFDF9] p-3.5 shadow-[0_3px_0_#3D2C2E]"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="rounded-full border border-[#3D2C2E] bg-[#FAF0E6] px-2.5 py-0.5 text-[10px] font-black">
+                          {sku.catalogId} • Stock: {stockedUnits}
+                        </span>
+                        <CrinkleCoinBadge amount={sku.currentRetailPrice} size="sm" />
+                      </div>
+                      <h4 className="mt-1.5 text-xs sm:text-sm font-black text-[#3D2C2E]">
+                        {sku.displayName}
+                      </h4>
+                      <p className="mt-0.5 text-[11px] font-bold text-[#5C4033]">
+                        Cost: {sku.wholesaleCost} CC • RRP: {sku.suggestedRetailPrice} CC (
+                        {(ratio * 100).toFixed(0)}%)
+                      </p>
+                    </div>
+
+                    {/* Chunky 48x48px Price Stepper Buttons (-1 CC, +1 CC, +5 CC) */}
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        id={`btn-price-minus-1-${sku.skuId}`}
+                        type="button"
+                        onClick={() => adjustProductPrice(sku.skuId, -1)}
+                        className="min-h-[48px] min-w-[48px] flex-1 rounded-xl border-2 border-[#3D2C2E] bg-[#FAF0E6] text-xs font-black text-[#3D2C2E] active:bg-[#A7C4B5]"
+                      >
+                        -1 CC
+                      </button>
+                      <button
+                        id={`btn-price-plus-1-${sku.skuId}`}
+                        type="button"
+                        onClick={() => adjustProductPrice(sku.skuId, 1)}
+                        className="min-h-[48px] min-w-[48px] flex-1 rounded-xl border-2 border-[#3D2C2E] bg-[#FAF0E6] text-xs font-black text-[#3D2C2E] active:bg-[#A7C4B5]"
+                      >
+                        +1 CC
+                      </button>
+                      <button
+                        id={`btn-price-plus-5-${sku.skuId}`}
+                        type="button"
+                        onClick={() => adjustProductPrice(sku.skuId, 5)}
+                        className="min-h-[48px] min-w-[48px] flex-1 rounded-xl border-2 border-[#3D2C2E] bg-[#FAF0E6] text-xs font-black text-[#3D2C2E] active:bg-[#A7C4B5]"
+                      >
+                        +5 CC
+                      </button>
+                    </div>
+
+                    <button
+                      id={`btn-clearance-toggle-${sku.skuId}`}
+                      type="button"
+                      onClick={() => toggleProductClearance(sku.skuId)}
+                      className={`mt-2 min-h-[48px] w-full rounded-xl border-2 border-[#3D2C2E] px-3 py-1.5 text-xs font-black ${
+                        sku.isClearance ? 'bg-[#FBBF24]' : 'bg-[#FFFDF9]'
+                      }`}
+                    >
+                      {sku.isClearance
+                        ? '★ Clearance Active (0.80x RRP)'
+                        : 'Toggle Clearance (0.80x RRP)'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ================= 4. BUILD & DECOR TAB ================= */}
         {activeTab === 'build' && (
           <div className="space-y-4">
-            {/* Active Build Controls Banner */}
             <div className="rounded-2xl border-2 border-[#3D2C2E] bg-[#FFFDF9] p-3.5 shadow-[0_3px_0_#3D2C2E]">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
@@ -239,7 +466,6 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
               </div>
             </div>
 
-            {/* Fixture Catalog Cards */}
             <div>
               <h4 className="mb-2 text-xs font-black uppercase text-[#5C4033]">
                 Retail Fixtures &amp; Footprint Rules
@@ -285,7 +511,6 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
               </div>
             </div>
 
-            {/* 4 Unlockable Room Theme Packs */}
             <div>
               <h4 className="mb-2 text-xs font-black uppercase text-[#5C4033]">
                 4 Room Theme Packs (High-Contrast Anti-CAD Palettes)
@@ -316,26 +541,6 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
                           )}
                         </div>
                         <p className="mt-1 text-[11px] font-bold text-[#5C4033]">{pack.subtitle}</p>
-                        <div className="mt-2 flex items-center gap-1.5">
-                          <span
-                            className="h-4 w-4 rounded-full border border-[#3D2C2E]"
-                            style={{ backgroundColor: pack.floorHex }}
-                            title="Floor Tone"
-                          />
-                          <span
-                            className="h-4 w-4 rounded-full border border-[#3D2C2E]"
-                            style={{ backgroundColor: pack.wallHex }}
-                            title="Wall Tone"
-                          />
-                          <span
-                            className="h-4 w-4 rounded-full border border-[#3D2C2E]"
-                            style={{ backgroundColor: pack.trimHex }}
-                            title="Baseboard Trim"
-                          />
-                          <span className="ml-1 text-[11px] font-black text-[#3D2C2E]">
-                            {pack.bonusLabel}
-                          </span>
-                        </div>
                       </div>
 
                       <button
@@ -358,7 +563,6 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
               </div>
             </div>
 
-            {/* Placed Fixtures Manager List */}
             <div>
               <h4 className="mb-2 text-xs font-black uppercase text-[#5C4033]">
                 Placed Floor Fixtures ({placedFixtures.length})
@@ -374,7 +578,7 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
                       <div>
                         <div className="text-xs font-black text-[#3D2C2E]">{def.name}</div>
                         <div className="text-[11px] font-bold text-[#5C4033]">
-                          Tile ({fix.tileX}, {fix.tileZ}) • Rot {fix.rotation * 90}°
+                          Tile ({fix.tileX}, {fix.tileZ}) • Stock: {fix.stockedItemCount}/{def.slotCapacity}
                         </div>
                       </div>
                       <button
@@ -393,117 +597,6 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
           </div>
         )}
 
-        {/* ================= 3. INVENTORY & PRICING TAB (Chunky -/+ Steppers) ================= */}
-        {activeTab === 'inventory' && (
-          <div className={cardGridClass}>
-            {products.map((sku) => {
-              const ratio = sku.currentRetailPrice / sku.suggestedRetailPrice;
-              return (
-                <div
-                  key={sku.skuId}
-                  className="flex flex-col justify-between rounded-2xl border-2 border-[#3D2C2E] bg-[#FFFDF9] p-3.5 shadow-[0_3px_0_#3D2C2E]"
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="rounded-full border border-[#3D2C2E] bg-[#FAF0E6] px-2.5 py-0.5 text-[10px] font-black">
-                        {sku.catalogId} • Size {sku.size}
-                      </span>
-                      <CrinkleCoinBadge amount={sku.currentRetailPrice} size="sm" />
-                    </div>
-                    <h4 className="mt-1.5 text-xs sm:text-sm font-black text-[#3D2C2E]">
-                      {sku.displayName}
-                    </h4>
-                    <p className="mt-0.5 text-[11px] font-bold text-[#5C4033]">
-                      Wholesale: {sku.wholesaleCost} CC • RRP: {sku.suggestedRetailPrice} CC (
-                      {(ratio * 100).toFixed(0)}%)
-                    </p>
-                  </div>
-
-                  {/* Chunky 48x48px Price Stepper Buttons (-1 CC, +1 CC, +5 CC) */}
-                  <div className="mt-3 flex items-center gap-2">
-                    <button
-                      id={`btn-price-minus-1-${sku.skuId}`}
-                      type="button"
-                      onClick={() => adjustProductPrice(sku.skuId, -1)}
-                      className="min-h-[48px] min-w-[48px] flex-1 rounded-xl border-2 border-[#3D2C2E] bg-[#FAF0E6] text-xs font-black text-[#3D2C2E] active:bg-[#A7C4B5]"
-                    >
-                      -1 CC
-                    </button>
-                    <button
-                      id={`btn-price-plus-1-${sku.skuId}`}
-                      type="button"
-                      onClick={() => adjustProductPrice(sku.skuId, 1)}
-                      className="min-h-[48px] min-w-[48px] flex-1 rounded-xl border-2 border-[#3D2C2E] bg-[#FAF0E6] text-xs font-black text-[#3D2C2E] active:bg-[#A7C4B5]"
-                    >
-                      +1 CC
-                    </button>
-                    <button
-                      id={`btn-price-plus-5-${sku.skuId}`}
-                      type="button"
-                      onClick={() => adjustProductPrice(sku.skuId, 5)}
-                      className="min-h-[48px] min-w-[48px] flex-1 rounded-xl border-2 border-[#3D2C2E] bg-[#FAF0E6] text-xs font-black text-[#3D2C2E] active:bg-[#A7C4B5]"
-                    >
-                      +5 CC
-                    </button>
-                  </div>
-
-                  <button
-                    id={`btn-clearance-toggle-${sku.skuId}`}
-                    type="button"
-                    onClick={() => toggleProductClearance(sku.skuId)}
-                    className={`mt-2 min-h-[48px] w-full rounded-xl border-2 border-[#3D2C2E] px-3 py-1.5 text-xs font-black ${
-                      sku.isClearance ? 'bg-[#FBBF24]' : 'bg-[#FFFDF9]'
-                    }`}
-                  >
-                    {sku.isClearance
-                      ? '★ Clearance Active (0.80x RRP)'
-                      : 'Toggle Clearance (0.80x RRP)'}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ================= 4. WHOLESALE MARKET TAB ================= */}
-        {activeTab === 'wholesale' && (
-          <div className={cardGridClass}>
-            {products.map((sku) => (
-              <div
-                key={`ws-${sku.skuId}`}
-                className="flex flex-col justify-between rounded-2xl border-2 border-[#3D2C2E] bg-[#FFFDF9] p-3.5 shadow-[0_3px_0_#3D2C2E]"
-              >
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-full border border-[#3D2C2E] bg-[#E0F2FE] px-2.5 py-0.5 text-[10px] font-black">
-                      {sku.catalogId} License
-                    </span>
-                    <CrinkleCoinBadge amount={sku.wholesaleCost * 6} size="sm" />
-                  </div>
-                  <h4 className="mt-1.5 text-xs sm:text-sm font-black text-[#3D2C2E]">
-                    {sku.displayName} (6-Pack Case)
-                  </h4>
-                  <p className="mt-1 text-[11px] font-bold text-[#5C4033]">
-                    Absorbency {sku.absorbencyLevel}/10 • Plushness {sku.plushnessLevel}/10
-                  </p>
-                </div>
-                <button
-                  id={`btn-order-case-${sku.skuId}`}
-                  type="button"
-                  onClick={() =>
-                    showToast(
-                      `Ordered 1 case of ${sku.displayName} to Exterior Delivery Bay (Milestone 2 stocking loop ready!)`
-                    )
-                  }
-                  className="mt-3 min-h-[48px] w-full rounded-xl border-2 border-[#3D2C2E] bg-[#A7C4B5] px-3 py-2 text-xs font-black text-[#3D2C2E] shadow-[0_2px_0_#3D2C2E]"
-                >
-                  Order Case ({sku.wholesaleCost * 6} CC)
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* ================= 5. GRANTS & STAFF TAB ================= */}
         {activeTab === 'grants' && (
           <div className="space-y-3">
@@ -515,7 +608,7 @@ export const StoreTabletPanel: React.FC<{ isDockedSide?: boolean }> = ({
                 <CrinkleCoinBadge amount={500} size="sm" />
               </div>
               <p className="mt-1 text-xs font-bold text-[#5C4033]">
-                Stock 2 display shelves and serve your first 10 neighborhood shoppers. (Unlocks in Milestone 3–4)
+                Stock 2 display shelves and serve your first 10 neighborhood shoppers. (Milestone 3–4)
               </p>
             </div>
             <div className="rounded-2xl border-2 border-[#3D2C2E] bg-[#FAF0E6] p-3.5">

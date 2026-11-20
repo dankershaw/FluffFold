@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { FIXTURE_DEFINITIONS } from '../../constants/gameData';
 import { useGameStore } from '../../store/useGameStore';
 import { FixtureTypeId } from '../../types/game';
+import { CheckoutAndEodModals } from './CheckoutAndEodModals';
 import { CrinkleCoinBadge } from './CrinkleCoinBadge';
 import { StoreTabletPanel } from './StoreTabletPanel';
+import { TutorialBanner } from './TutorialBanner';
 
 export const ResponsiveHudShell: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -23,12 +25,17 @@ export const ResponsiveHudShell: React.FC<{ children: React.ReactNode }> = ({
   const setSelectedBuildFixture = useGameStore((s) => s.setSelectedBuildFixture);
   const rotateBuildGhost = useGameStore((s) => s.rotateBuildGhost);
 
+  const carriedBox = useGameStore((s) => s.carriedBox);
+  const products = useGameStore((s) => s.products);
+  const dropCarriedBoxToBay = useGameStore((s) => s.dropCarriedBoxToBay);
+
   const activeModal = useGameStore((s) => s.activeModal);
   const setActiveModal = useGameStore((s) => s.setActiveModal);
   const setActiveTabletTab = useGameStore((s) => s.setActiveTabletTab);
   const isUnfoldedTabletOpen = useGameStore((s) => s.isUnfoldedTabletOpen);
   const toggleUnfoldedTablet = useGameStore((s) => s.toggleUnfoldedTablet);
   const toggleStoreOpen = useGameStore((s) => s.toggleStoreOpen);
+  const tutorial = useGameStore((s) => s.tutorial);
   const toastMessage = useGameStore((s) => s.toastMessage);
   const showToast = useGameStore((s) => s.showToast);
 
@@ -57,6 +64,10 @@ export const ResponsiveHudShell: React.FC<{ children: React.ReactNode }> = ({
   const isUnfolded = viewportWidth >= 640;
   const displayCash =
     gameMode === 'Sandbox' && sandboxSettings.infiniteCash ? '∞' : crinkleCoins;
+
+  const carriedSku = carriedBox
+    ? products.find((p) => p.skuId === carriedBox.skuId)
+    : null;
 
   return (
     <div
@@ -116,7 +127,11 @@ export const ResponsiveHudShell: React.FC<{ children: React.ReactNode }> = ({
               type="button"
               onClick={toggleStoreOpen}
               className={`min-h-[48px] min-w-[48px] rounded-2xl border-2 border-[#3D2C2E] px-3.5 py-2 text-xs font-black shadow-[0_3px_0_#3D2C2E] transition ${
-                isStoreOpen ? 'bg-[#10B981] text-white' : 'bg-[#A7C4B5] text-[#3D2C2E]'
+                isStoreOpen
+                  ? 'bg-[#10B981] text-white'
+                  : tutorial.isActive && tutorial.currentStep === 6
+                  ? 'bg-[#FBBF24] text-[#3D2C2E] animate-bounce'
+                  : 'bg-[#A7C4B5] text-[#3D2C2E]'
               }`}
             >
               {isStoreOpen ? 'Shop OPEN' : 'Open Shop'}
@@ -164,6 +179,36 @@ export const ResponsiveHudShell: React.FC<{ children: React.ReactNode }> = ({
         {/* Live 3D Isometric Shop Floor */}
         <main className="relative flex-1 h-full overflow-hidden">
           {children}
+
+          {/* Top-Left Non-Blocking 8-Step Interactive Tutorial Banner */}
+          <div className="pointer-events-none absolute left-0 top-0 z-20 w-full">
+            <TutorialBanner isUnfolded={isUnfolded} />
+          </div>
+
+          {/* Floating Carried Wholesale Case Action Pill (when Shopkeeper is holding a box overhead) */}
+          {carriedBox && !isBuildMode && (
+            <div
+              id="carried-box-action-bar"
+              className="absolute left-3 bottom-24 sm:bottom-6 z-20 flex flex-wrap items-center gap-2.5 rounded-2xl border-2 border-[#3D2C2E] bg-[#FEF3C7]/95 px-3.5 py-2 shadow-[0_4px_0_#3D2C2E]"
+            >
+              <div>
+                <div className="text-xs font-black text-[#3D2C2E]">
+                  📦 Carrying {carriedSku?.displayName ?? 'Case'} ({carriedBox.unitsRemaining} units)
+                </div>
+                <div className="text-[11px] font-bold text-[#5C4033]">
+                  Tap any emerald-highlighted shelf in 3D to stock open slots!
+                </div>
+              </div>
+              <button
+                id="btn-hud-drop-box"
+                type="button"
+                onClick={dropCarriedBoxToBay}
+                className="min-h-[48px] min-w-[48px] rounded-xl border-2 border-[#3D2C2E] bg-[#FFFDF9] px-3 py-1.5 text-xs font-black text-[#3D2C2E]"
+              >
+                Return to Bay
+              </button>
+            </div>
+          )}
 
           {/* Floating Build Mode Quick Fixture Selector Bar (Bottom-Left over 3D Canvas) */}
           {isBuildMode && (
@@ -214,11 +259,13 @@ export const ResponsiveHudShell: React.FC<{ children: React.ReactNode }> = ({
             </div>
           )}
 
-          {/* Toast Feedback Pill */}
+          {/* Toast Feedback Pill — shifts higher when Carried Box bar or Build toolbar is active so zero UI overlaps occur */}
           {toastMessage && (
             <div
               id="hud-toast-banner"
-              className="pointer-events-none absolute left-1/2 top-16 sm:top-4 z-30 -translate-x-1/2 rounded-full border-2 border-[#3D2C2E] bg-[#FFFDF9] px-4 py-1.5 text-xs font-black text-[#3D2C2E] shadow-[0_3px_0_#3D2C2E]"
+              className={`pointer-events-none absolute left-1/2 z-30 -translate-x-1/2 max-w-md rounded-2xl border-2 border-[#3D2C2E] bg-[#FFFDF9]/95 px-4 py-2 text-center text-xs font-black text-[#3D2C2E] shadow-[0_3px_0_#3D2C2E] ${
+                carriedBox || isBuildMode ? 'bottom-40 sm:bottom-24' : 'bottom-20 sm:bottom-5'
+              }`}
             >
               {toastMessage}
             </div>
@@ -305,6 +352,9 @@ export const ResponsiveHudShell: React.FC<{ children: React.ReactNode }> = ({
           <StoreTabletPanel isDockedSide={false} />
         </div>
       )}
+
+      {/* Interactive Checkout Register Drawer, EOD P&L Summary & Packing Bench Modals */}
+      <CheckoutAndEodModals />
     </div>
   );
 };

@@ -1,5 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { Html, Outlines, RoundedBox } from '@react-three/drei';
+import * as THREE from 'three';
 import { FIXTURE_DEFINITIONS, STARTER_PRODUCTS } from '../../constants/gameData';
 import { useGameStore } from '../../store/useGameStore';
 import { FixtureTypeId, PlacedFixture } from '../../types/game';
@@ -8,6 +10,28 @@ import { getProductLabelTexture, getToonGradientMap } from '../../utils/toonMate
 
 const DARK_COCOA = '#3D2C2E';
 
+/**
+ * Animated 3D Pulse Ring rendered beneath compatible shelves when the Shopkeeper is carrying a box
+ * or during Tutorial Step 4 (Stock Shelves) / Step 7 (Checkout Counter).
+ */
+const ShelfHighlightRing: React.FC<{ color: string; radius?: number }> = ({
+  color,
+  radius = 0.45,
+}) => {
+  const ringRef = useRef<THREE.Mesh>(null);
+  useFrame((state) => {
+    if (!ringRef.current) return;
+    const s = 1 + Math.sin(state.clock.elapsedTime * 4) * 0.12;
+    ringRef.current.scale.set(s, s, 1);
+  });
+  return (
+    <mesh ref={ringRef} position={[0, 0.025, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[radius * 0.78, radius, 28]} />
+      <meshBasicMaterial color={color} transparent opacity={0.85} />
+    </mesh>
+  );
+};
+
 interface FixtureMeshProps {
   fixture: PlacedFixture;
   isGhost?: boolean;
@@ -15,8 +39,8 @@ interface FixtureMeshProps {
 }
 
 /**
- * Renders an individual cel-shaded retail fixture with <Outlines screenspace thickness={0.03} color="#3D2C2E" />
- * and exact slot-based product anchor coordinates so stocked items snap neatly inside shelf bays.
+ * Renders an individual cel-shaded retail fixture with <Outlines screenspace thickness={0.03} color="#3D2C2E" />,
+ * exact slot-based product anchor coordinates, and context action chaining when tapped.
  */
 export const FixtureMesh: React.FC<FixtureMeshProps> = ({
   fixture,
@@ -25,9 +49,11 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
 }) => {
   const cameraZoom = useGameStore((s) => s.cameraZoom);
   const selectedFixtureId = useGameStore((s) => s.selectedFixtureId);
-  const selectFixture = useGameStore((s) => s.selectFixture);
   const isBuildMode = useGameStore((s) => s.isBuildMode);
   const products = useGameStore((s) => s.products);
+  const carriedBox = useGameStore((s) => s.carriedBox);
+  const interactWithFixture = useGameStore((s) => s.interactWithFixture);
+  const tutorial = useGameStore((s) => s.tutorial);
 
   const gradientMap = useMemo(() => getToonGradientMap(), []);
   const def = FIXTURE_DEFINITIONS[fixture.typeId];
@@ -49,16 +75,34 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
   );
 
   const labelTex = useMemo(
-    () =>
-      getProductLabelTexture(
-        (assignedSku.catalogId as 'Medical' | 'Little' | 'Middle' | 'Caregiver') || 'Little'
-      ),
+    () => getProductLabelTexture(assignedSku.catalogId || 'Little'),
     [assignedSku.catalogId]
   );
 
+  // Check if this shelf is compatible with the currently carried delivery box
+  const isCompatibleWithCarriedBox = useMemo(() => {
+    if (isGhost || !carriedBox || def.slotCapacity <= 0) return false;
+    const hasOpenSlots = fixture.stockedItemCount < def.slotCapacity;
+    if (!hasOpenSlots) return false;
+    return (
+      fixture.stockedItemCount === 0 ||
+      !fixture.assignedSkuId ||
+      fixture.assignedSkuId === carriedBox.skuId
+    );
+  }, [isGhost, carriedBox, def.slotCapacity, fixture.stockedItemCount, fixture.assignedSkuId]);
+
+  const isTutorialCheckoutHighlight =
+    !isGhost &&
+    tutorial.isActive &&
+    tutorial.currentStep === 7 &&
+    fixture.typeId === 'CheckoutCounter';
+
   const ghostColor = isValidGhost ? '#10B981' : '#EF4444';
   const isSelected = !isGhost && selectedFixtureId === fixture.id;
-  const showPricePill = !isGhost && (cameraZoom > 1.2 || isSelected) && def.slotCapacity > 0;
+  const showPricePill =
+    !isGhost &&
+    (cameraZoom > 1.2 || isSelected || isCompatibleWithCarriedBox) &&
+    def.slotCapacity > 0;
 
   // Slot-based shelf anchor coordinates (Row x Column) inside a 2x1 Timber Gondola Shelf (1.0m x 0.5m)
   const standardShelfSlots: [number, number, number][] = [
@@ -78,6 +122,18 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
     [0.1, 0.74, 0.05],
   ];
 
+  // Stockroom Rack 8-slot coordinates (2x1 tiles)
+  const stockroomSlots: [number, number, number][] = [
+    [-0.28, 0.36, 0.04],
+    [-0.09, 0.36, 0.04],
+    [0.09, 0.36, 0.04],
+    [0.28, 0.36, 0.04],
+    [-0.28, 0.84, 0.04],
+    [-0.09, 0.84, 0.04],
+    [0.09, 0.84, 0.04],
+    [0.28, 0.84, 0.04],
+  ];
+
   const renderVisualBody = (typeId: FixtureTypeId) => {
     const matProps = isGhost
       ? { color: ghostColor, transparent: true, opacity: 0.72, gradientMap }
@@ -86,7 +142,6 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
     if (typeId === 'StandardShelf') {
       return (
         <group>
-          {/* Chunky Rounded Timber Base & Backboard */}
           <RoundedBox args={[0.92, 0.14, 0.44]} radius={0.04} smoothness={3} position={[0, 0.07, 0]} castShadow receiveShadow>
             <meshToonMaterial color={isGhost ? ghostColor : '#A47148'} {...matProps} />
             <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
@@ -95,25 +150,27 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
             <meshToonMaterial color={isGhost ? ghostColor : '#C88A55'} {...matProps} />
             <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
           </RoundedBox>
-          {/* Middle Timber Shelf Deck */}
           <RoundedBox args={[0.9, 0.07, 0.42]} radius={0.025} smoothness={2} position={[0, 0.54, 0]} castShadow>
             <meshToonMaterial color={isGhost ? ghostColor : '#B47B48'} {...matProps} />
             <Outlines screenspace thickness={0.022} color={DARK_COCOA} />
           </RoundedBox>
-          {/* Pastel Top Header Trim Awning */}
           <RoundedBox args={[0.96, 0.14, 0.46]} radius={0.05} smoothness={3} position={[0, 1.08, 0]} castShadow>
-            <meshToonMaterial color={isGhost ? ghostColor : '#A7C4B5'} {...matProps} />
+            <meshToonMaterial
+              color={
+                isGhost
+                  ? ghostColor
+                  : isCompatibleWithCarriedBox
+                  ? '#10B981'
+                  : '#A7C4B5'
+              }
+              {...matProps}
+            />
             <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
           </RoundedBox>
 
-          {/* Slot-Based Stocked Pillow-Pack Diaper Bags (using boxGeometry so canvas label UVs map 0..1 cleanly) */}
           {!isGhost &&
             standardShelfSlots.slice(0, fixture.stockedItemCount).map((slotPos, idx) => (
-              <mesh
-                key={`slot-${idx}`}
-                position={slotPos}
-                castShadow
-              >
+              <mesh key={`slot-${idx}`} position={slotPos} castShadow>
                 <boxGeometry args={[0.21, 0.25, 0.22]} />
                 <meshToonMaterial map={labelTex} gradientMap={gradientMap} />
                 <Outlines screenspace thickness={0.022} color={DARK_COCOA} />
@@ -126,7 +183,6 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
     if (typeId === 'EndCapDisplay') {
       return (
         <group>
-          {/* Woven Wicker Base Stand */}
           <RoundedBox args={[0.45, 0.22, 0.45]} radius={0.05} smoothness={3} position={[0, 0.11, 0]} castShadow>
             <meshToonMaterial color={isGhost ? ghostColor : '#C88A55'} {...matProps} />
             <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
@@ -139,13 +195,20 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
             <meshToonMaterial color={isGhost ? ghostColor : '#D9A066'} {...matProps} />
             <Outlines screenspace thickness={0.022} color={DARK_COCOA} />
           </RoundedBox>
-          {/* Scalloped Pastel Fabric Awning */}
           <RoundedBox args={[0.5, 0.16, 0.5]} radius={0.06} smoothness={3} position={[0, 1.02, 0]} castShadow>
-            <meshToonMaterial color={isGhost ? ghostColor : '#FBCFE8'} {...matProps} />
+            <meshToonMaterial
+              color={
+                isGhost
+                  ? ghostColor
+                  : isCompatibleWithCarriedBox
+                  ? '#10B981'
+                  : '#FBCFE8'
+              }
+              {...matProps}
+            />
             <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
           </RoundedBox>
 
-          {/* Stocked Bunny Plushies in exact slot anchors */}
           {!isGhost &&
             endCapSlots.slice(0, fixture.stockedItemCount).map((slotPos, idx) => (
               <group key={`plush-${idx}`} position={slotPos}>
@@ -154,7 +217,6 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
                   <meshToonMaterial color={idx % 2 === 0 ? '#FBCFE8' : '#E9D8FD'} gradientMap={gradientMap} />
                   <Outlines screenspace thickness={0.02} color={DARK_COCOA} />
                 </mesh>
-                {/* Bunny Ears */}
                 <mesh position={[-0.035, 0.09, 0]}>
                   <capsuleGeometry args={[0.018, 0.06, 6, 8]} />
                   <meshToonMaterial color={idx % 2 === 0 ? '#FBCFE8' : '#E9D8FD'} gradientMap={gradientMap} />
@@ -174,22 +236,18 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
     if (typeId === 'CheckoutCounter') {
       return (
         <group>
-          {/* 3x2 Tiles (1.5m x 1.0m) Chunky Timber & Cream Counter Body */}
           <RoundedBox args={[1.42, 0.86, 0.88]} radius={0.08} smoothness={4} position={[0, 0.43, 0]} castShadow receiveShadow>
             <meshToonMaterial color={isGhost ? ghostColor : '#B47B48'} {...matProps} />
             <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
           </RoundedBox>
-          {/* Warm Butcher-Block Countertop */}
           <RoundedBox args={[1.48, 0.12, 0.94]} radius={0.04} smoothness={3} position={[0, 0.88, 0]} castShadow>
             <meshToonMaterial color={isGhost ? ghostColor : '#FAF0E6'} {...matProps} />
             <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
           </RoundedBox>
-          {/* Vintage Cash Register Till */}
           <RoundedBox args={[0.42, 0.34, 0.36]} radius={0.06} smoothness={3} position={[-0.36, 1.06, -0.06]} castShadow>
             <meshToonMaterial color={isGhost ? ghostColor : '#FBBF24'} {...matProps} />
             <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
           </RoundedBox>
-          {/* Discreet Plain Kraft Bag Dispenser Stack */}
           <RoundedBox args={[0.38, 0.18, 0.32]} radius={0.04} smoothness={2} position={[0.36, 0.98, 0.08]} castShadow>
             <meshToonMaterial color={isGhost ? ghostColor : '#D9A066'} {...matProps} />
             <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
@@ -201,7 +259,6 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
     if (typeId === 'PackingBench') {
       return (
         <group>
-          {/* 3x1 Tiles (1.5m x 0.5m) Mail Order Packing Station */}
           <RoundedBox args={[1.42, 0.82, 0.44]} radius={0.06} smoothness={3} position={[0, 0.41, 0]} castShadow>
             <meshToonMaterial color={isGhost ? ghostColor : '#8D6E63'} {...matProps} />
             <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
@@ -210,7 +267,6 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
             <meshToonMaterial color={isGhost ? ghostColor : '#D9A066'} {...matProps} />
             <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
           </RoundedBox>
-          {/* Shipping Carton & Tape Dispenser on Bench */}
           <RoundedBox args={[0.36, 0.28, 0.32]} radius={0.04} smoothness={2} position={[-0.25, 1.01, 0]} castShadow>
             <meshToonMaterial color={isGhost ? ghostColor : '#C88A55'} {...matProps} />
             <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
@@ -226,14 +282,14 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
           <meshToonMaterial color={isGhost ? ghostColor : '#64748B'} {...matProps} />
           <Outlines screenspace thickness={0.03} color={DARK_COCOA} />
         </RoundedBox>
-        <RoundedBox args={[0.78, 0.34, 0.36]} radius={0.04} smoothness={2} position={[0, 0.38, 0.04]}>
-          <meshToonMaterial color={isGhost ? ghostColor : '#D9A066'} {...matProps} />
-          <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
-        </RoundedBox>
-        <RoundedBox args={[0.78, 0.34, 0.36]} radius={0.04} smoothness={2} position={[0, 0.86, 0.04]}>
-          <meshToonMaterial color={isGhost ? ghostColor : '#D9A066'} {...matProps} />
-          <Outlines screenspace thickness={0.025} color={DARK_COCOA} />
-        </RoundedBox>
+        {!isGhost &&
+          stockroomSlots.slice(0, fixture.stockedItemCount).map((slotPos, idx) => (
+            <mesh key={`rack-slot-${idx}`} position={slotPos} castShadow>
+              <boxGeometry args={[0.16, 0.22, 0.22]} />
+              <meshToonMaterial map={labelTex} gradientMap={gradientMap} />
+              <Outlines screenspace thickness={0.02} color={DARK_COCOA} />
+            </mesh>
+          ))}
       </group>
     );
   };
@@ -245,29 +301,64 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
       onClick={(e) => {
         if (isGhost || isBuildMode) return;
         e.stopPropagation();
-        selectFixture(isSelected ? null : fixture.id);
+        interactWithFixture(fixture.id);
       }}
     >
       {renderVisualBody(fixture.typeId)}
 
+      {/* Glowing 3D Pulse Ring when shelf is compatible with carried box */}
+      {isCompatibleWithCarriedBox && (
+        <ShelfHighlightRing color="#10B981" radius={width > 1 ? 0.62 : 0.42} />
+      )}
+
+      {/* Glowing 3D Pulse Ring on Checkout Counter during Tutorial Step 7 */}
+      {isTutorialCheckoutHighlight && (
+        <>
+          <ShelfHighlightRing color="#FBBF24" radius={0.85} />
+          <Html position={[0, 1.48, 0]} center zIndexRange={[10, 0]}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                interactWithFixture(fixture.id);
+              }}
+              className="animate-bounce whitespace-nowrap rounded-full border-2 border-[#3D2C2E] bg-[#FBBF24] px-3 py-1 text-xs font-black text-[#3D2C2E] shadow-md"
+            >
+              🔔 Tap Register Counter to Open Checkout!
+            </button>
+          </Html>
+        </>
+      )}
+
       {/* Subtle Selection Ground Ring when tapped */}
-      {isSelected && (
+      {isSelected && !isCompatibleWithCarriedBox && (
         <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.38, 0.48, 28]} />
           <meshBasicMaterial color="#FBBF24" />
         </mesh>
       )}
 
-      {/* Diegetic Shelf Price Tag Pill — renders only when zoomed in (zoom > 1.2x) or tapped */}
+      {/* Diegetic Shelf Price & Slot Capacity Pill */}
       {showPricePill && (
-        <Html
-          position={[0, 1.38, 0]}
-          center
-          zIndexRange={[10, 0]}
-        >
-          <div className="pointer-events-none whitespace-nowrap rounded-full bg-[#FFFDF9] px-2.5 py-0.5 text-[11px] font-extrabold text-[#3D2C2E] border-2 border-[#3D2C2E] shadow-sm">
-            {assignedSku.displayName.split(' ')[0]} • {assignedSku.currentRetailPrice} CC
-          </div>
+        <Html position={[0, 1.38, 0]} center zIndexRange={[10, 0]}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              interactWithFixture(fixture.id);
+            }}
+            className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-[#3D2C2E] border-2 border-[#3D2C2E] shadow-sm transition ${
+              isCompatibleWithCarriedBox
+                ? 'bg-[#10B981] text-white animate-pulse'
+                : 'bg-[#FFFDF9]'
+            }`}
+          >
+            {isCompatibleWithCarriedBox
+              ? `📥 Tap to Stock (${fixture.stockedItemCount}/${def.slotCapacity})`
+              : fixture.stockedItemCount > 0
+              ? `${assignedSku.displayName.split(' ')[0]} • ${assignedSku.currentRetailPrice} CC (${fixture.stockedItemCount}/${def.slotCapacity})`
+              : `Empty Shelf (0/${def.slotCapacity})`}
+          </button>
         </Html>
       )}
     </group>
@@ -275,8 +366,7 @@ export const FixtureMesh: React.FC<FixtureMeshProps> = ({
 };
 
 /**
- * Renders all placed fixtures plus the live 1-tile snapped emerald/crimson Ghost Preview
- * with clearance tile indicators when Build Mode is active.
+ * Renders all placed fixtures, floating +1 feedback badges, and the live 1-tile snapped Ghost Preview.
  */
 export const ShopFixturesLayer: React.FC<{
   validationResult: {
@@ -290,11 +380,33 @@ export const ShopFixturesLayer: React.FC<{
   const selectedBuildFixture = useGameStore((s) => s.selectedBuildFixture);
   const buildRotation = useGameStore((s) => s.buildRotation);
   const hoveredTile = useGameStore((s) => s.hoveredTile);
+  const floatingBadges = useGameStore((s) => s.floatingBadges);
+  const clearExpiredBadges = useGameStore((s) => s.clearExpiredBadges);
+
+  useFrame(() => {
+    if (floatingBadges.length > 0) {
+      clearExpiredBadges();
+    }
+  });
 
   return (
     <group name="shop-fixtures-layer">
       {placedFixtures.map((fix) => (
         <FixtureMesh key={fix.id} fixture={fix} />
+      ))}
+
+      {/* Diegetic Floating +1 Feedback Badges */}
+      {floatingBadges.map((b) => (
+        <Html
+          key={b.id}
+          position={b.worldPos}
+          center
+          zIndexRange={[20, 0]}
+        >
+          <div className="pointer-events-none animate-bounce whitespace-nowrap rounded-full border-2 border-[#3D2C2E] bg-[#FEF3C7] px-3 py-1 text-xs font-black text-[#3D2C2E] shadow-[0_2px_0_#3D2C2E]">
+            {b.text}
+          </div>
+        </Html>
       ))}
 
       {/* Live 1-Tile Placement Ghost Preview + Footprint & Clearance Tile Markers */}
@@ -313,7 +425,6 @@ export const ShopFixturesLayer: React.FC<{
             isValidGhost={validationResult.valid}
           />
 
-          {/* Footprint Tile Highlight Pads (Emerald #10B981 when valid, Crimson #EF4444 when invalid) */}
           {validationResult.footprintTiles.map((t, i) => {
             const [wx, , wz] = tileToWorld(t.x, t.z, 1, 1);
             return (
@@ -332,7 +443,6 @@ export const ShopFixturesLayer: React.FC<{
             );
           })}
 
-          {/* Required Interaction / Queue / Worker Clearance Tile Pads */}
           {validationResult.clearanceTiles.map((c, i) => {
             const [wx, , wz] = tileToWorld(c.x, c.z, 1, 1);
             return (

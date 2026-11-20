@@ -19,7 +19,7 @@ export interface SandboxSettings {
 export interface ProductSKU {
   skuId: string;
   displayName: string;
-  catalogId: string;
+  catalogId: Demographic;
   chassis: ChassisType;
   size: ItemSize;
   format: PackFormat;
@@ -99,6 +99,38 @@ export interface PlacedFixture {
   rotation: 0 | 1 | 2 | 3;
   stockedItemCount: number;
   assignedSkuId?: string;
+}
+
+export interface DeliveryCaseBox {
+  id: string;
+  skuId: string;
+  unitsRemaining: number;
+  maxUnits: number;
+  /** Pallet slot index (0..3) in the exterior Delivery Bay */
+  baySlotIndex: number;
+}
+
+export interface FloatingFeedbackBadge {
+  id: string;
+  text: string;
+  worldPos: [number, number, number];
+  createdAt: number;
+}
+
+export type PendingAvatarAction =
+  | { type: 'none' }
+  | { type: 'pickupDeliveryBox'; boxId: string }
+  | { type: 'stockFixture'; fixtureId: string }
+  | { type: 'openCheckout' }
+  | { type: 'openPacking' };
+
+export type TutorialStepNumber = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+
+export interface TutorialState {
+  isActive: boolean;
+  isCompleted: boolean;
+  currentStep: TutorialStepNumber;
+  casesOrderedInTutorial: number;
 }
 
 export type ActiveModalType =

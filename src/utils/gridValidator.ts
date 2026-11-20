@@ -82,15 +82,12 @@ export function getFixtureTiles(
     let rx = offset.dx;
     let rz = offset.dz;
     if (rotation === 1) {
-      // 90 deg clockwise
       rx = def.depthTiles - 1 - offset.dz;
       rz = offset.dx;
     } else if (rotation === 2) {
-      // 180 deg
       rx = def.widthTiles - 1 - offset.dx;
       rz = def.depthTiles - 1 - offset.dz;
     } else if (rotation === 3) {
-      // 270 deg clockwise
       rx = offset.dz;
       rz = def.widthTiles - 1 - offset.dx;
     }
@@ -102,6 +99,129 @@ export function getFixtureTiles(
   });
 
   return { width, depth, footprintTiles, clearanceTiles };
+}
+
+/**
+ * Returns the set of blocked footprint tile keys ("x,z") for all placed fixtures.
+ */
+export function getOccupiedFootprintSet(fixtures: PlacedFixture[]): Set<string> {
+  const occupied = new Set<string>();
+  for (const fix of fixtures) {
+    const { footprintTiles } = getFixtureTiles(fix.typeId, fix.tileX, fix.tileZ, fix.rotation);
+    for (const t of footprintTiles) {
+      occupied.add(`${t.x},${t.z}`);
+    }
+  }
+  return occupied;
+}
+
+/**
+ * Deterministic A* shortest-path solver on the 2D integer grid.
+ * Returns an ordered array of TileCoord waypoints from `start` (excluded) to `goal` (included),
+ * or an empty array if already at `goal` or unreachable.
+ */
+export function findAStarPath(
+  start: TileCoord,
+  goal: TileCoord,
+  fixtures: PlacedFixture[],
+  gridSize = GRID_SIZE
+): TileCoord[] {
+  const key = (x: number, z: number) => `${x},${z}`;
+  if (start.x === goal.x && start.z === goal.z) return [];
+
+  const blockedSet = getOccupiedFootprintSet(fixtures);
+  // If goal tile itself is blocked, pick the closest walkable orthogonal neighbor
+  let targetGoal = goal;
+  if (blockedSet.has(key(goal.x, goal.z))) {
+    const candidates = [
+      { x: goal.x, z: goal.z + 1 },
+      { x: goal.x + 1, z: goal.z },
+      { x: goal.x - 1, z: goal.z },
+      { x: goal.x, z: goal.z - 1 },
+    ].filter(
+      (c) =>
+        c.x >= 0 &&
+        c.x < gridSize &&
+        c.z >= 0 &&
+        c.z < gridSize &&
+        !blockedSet.has(key(c.x, c.z))
+    );
+    if (candidates.length === 0) return [];
+    candidates.sort(
+      (a, b) =>
+        Math.abs(a.x - start.x) +
+        Math.abs(a.z - start.z) -
+        (Math.abs(b.x - start.x) + Math.abs(b.z - start.z))
+    );
+    targetGoal = candidates[0];
+  }
+
+  interface AStarNode {
+    x: number;
+    z: number;
+    g: number;
+    f: number;
+    parent?: AStarNode;
+  }
+
+  const heuristic = (ax: number, az: number, bx: number, bz: number) =>
+    Math.abs(ax - bx) + Math.abs(az - bz);
+
+  const openList: AStarNode[] = [
+    {
+      x: start.x,
+      z: start.z,
+      g: 0,
+      f: heuristic(start.x, start.z, targetGoal.x, targetGoal.z),
+    },
+  ];
+  const bestG = new Map<string, number>();
+  bestG.set(key(start.x, start.z), 0);
+
+  const dirs = [
+    { dx: 1, dz: 0 },
+    { dx: -1, dz: 0 },
+    { dx: 0, dz: 1 },
+    { dx: 0, dz: -1 },
+  ];
+
+  while (openList.length > 0) {
+    openList.sort((a, b) => a.f - b.f);
+    const current = openList.shift()!;
+
+    if (current.x === targetGoal.x && current.z === targetGoal.z) {
+      const path: TileCoord[] = [];
+      let curr: AStarNode | undefined = current;
+      while (curr && !(curr.x === start.x && curr.z === start.z)) {
+        path.unshift({ x: curr.x, z: curr.z });
+        curr = curr.parent;
+      }
+      return path;
+    }
+
+    for (const d of dirs) {
+      const nx = current.x + d.dx;
+      const nz = current.z + d.dz;
+      if (nx < 0 || nx >= gridSize || nz < 0 || nz >= gridSize) continue;
+      const nKey = key(nx, nz);
+      if (blockedSet.has(nKey)) continue;
+
+      const tentativeG = current.g + 1;
+      const prevG = bestG.get(nKey);
+      if (prevG === undefined || tentativeG < prevG) {
+        bestG.set(nKey, tentativeG);
+        openList.push({
+          x: nx,
+          z: nz,
+          g: tentativeG,
+          f: tentativeG + heuristic(nx, nz, targetGoal.x, targetGoal.z),
+          parent: current,
+        });
+      }
+    }
+  }
+
+  return [];
 }
 
 /**
@@ -151,11 +271,7 @@ export function hasPathBetween(
 }
 
 /**
- * Validates whether placing a fixture of `typeId` at `(tileX, tileZ, rotation)` is legal:
- * 1. Entire footprint AND clearance tiles stay inside the [0..gridSize-1] room boundary.
- * 2. Footprint does not overlap any existing fixture footprint or clearance tile, nor doorway entrance tiles.
- * 3. Clearance tiles do not overlap any existing fixture footprint.
- * 4. Preserves A* path connectivity from the Entrance tile to all placed Shelves and the Checkout Counter.
+ * Validates whether placing a fixture of `typeId` at `(tileX, tileZ, rotation)` is legal.
  */
 export function validateFixturePlacement(
   typeId: FixtureTypeId,
@@ -285,7 +401,6 @@ export function validateFixturePlacement(
 
   for (const fixTiles of allFixturesToTest) {
     if (fixTiles.clearanceTiles.length === 0) continue;
-    // At least one interaction/queue tile and one worker tile (if applicable) must be reachable from the entrance
     const reachable = fixTiles.clearanceTiles.every((ct) =>
       hasPathBetween(entranceTile, { x: ct.x, z: ct.z }, simulatedBlocked, gridSize)
     );
